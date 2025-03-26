@@ -15,6 +15,37 @@ use bytes::{Bytes, BytesMut};
 /// Encoding trait.
 ///
 /// This trait describes how to encode a given type.
+///
+/// This trait can be derived for structs where all fields implement `Encode`. This requires the
+/// `derive` feature to be enabled.
+///
+/// # Example
+///
+#[cfg_attr(feature = "derive", doc = "```")]
+#[cfg_attr(not(feature = "derive"), doc = "```ignore")]
+/// use ssh_encoding::Encode;
+///
+/// #[derive(Encode)]
+/// struct Example {
+///     foo: u8,
+///     bar: u32,
+///     baz: String,
+/// }
+///
+/// let example = Example {
+///    foo: 42,
+///    bar: 0xDEADBEEF,
+///    baz: "hello".to_string(),
+/// };
+/// assert_eq!(example.encoded_len().unwrap(), 14);
+/// assert_eq!(
+///     example.encode_vec().unwrap(),
+///     vec![
+///         42,
+///         0xDE, 0xAD, 0xBE, 0xEF,
+///         0x00, 0x00, 0x00, 0x05, b'h', b'e', b'l', b'l', b'o'
+///     ]
+/// );
 pub trait Encode {
     /// Get the length of this type encoded in bytes, prior to Base64 encoding.
     fn encoded_len(&self) -> Result<usize, Error>;

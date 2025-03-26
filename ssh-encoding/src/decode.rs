@@ -17,6 +17,33 @@ const MAX_SIZE: usize = 0xFFFFF;
 /// Decoding trait.
 ///
 /// This trait describes how to decode a given type.
+///
+/// This trait can be derived for structs where all fields implement `Decode`. This requires the
+/// `derive` feature to be enabled.
+///
+/// # Example
+///
+#[cfg_attr(feature = "derive", doc = "```")]
+#[cfg_attr(not(feature = "derive"), doc = "```ignore")]
+/// use ssh_encoding::Decode;
+///
+/// #[derive(Decode)]
+/// struct Example {
+///     foo: u8,
+///     bar: u32,
+///     baz: String,
+/// }
+///
+/// let data = [
+///     42,
+///     0xDE, 0xAD, 0xBE, 0xEF,
+///     0x00, 0x00, 0x00, 0x05, b'h', b'e', b'l', b'l', b'o'
+/// ];
+/// let example = Example::decode(&mut &data[..]).unwrap();
+///
+/// assert_eq!(example.foo, 42);
+/// assert_eq!(example.bar, 0xDEADBEEF);
+/// assert_eq!(example.baz, "hello");
 pub trait Decode: Sized {
     /// Type returned in the event of a decoding error.
     type Error: From<Error>;
