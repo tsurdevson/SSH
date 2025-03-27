@@ -186,6 +186,26 @@ impl Encode for [u8] {
     }
 }
 
+/// Encodes `&[u8]` into `string` as described in [RFC4251 § 5]:
+///
+/// > Arbitrary length binary string.  Strings are allowed to contain
+/// > arbitrary binary data, including null characters and 8-bit
+/// > characters.  They are stored as a uint32 containing its length
+/// > (number of bytes that follow) and zero (= empty string) or more
+/// > bytes that are the value of the string.  Terminating null
+/// > characters are not used.
+///
+/// [RFC4251 § 5]: https://datatracker.ietf.org/doc/html/rfc4251#section-5
+impl Encode for &[u8] {
+    fn encoded_len(&self) -> Result<usize, Error> {
+        (*self).encoded_len()
+    }
+
+    fn encode(&self, writer: &mut impl Writer) -> Result<(), Error> {
+        (*self).encode(writer)
+    }
+}
+
 /// Encodes `[u8; N]` into `byte[N]` as described in [RFC4251 § 5]:
 ///
 /// > A byte represents an arbitrary 8-bit value (octet).  Fixed length
