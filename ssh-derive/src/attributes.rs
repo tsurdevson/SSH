@@ -38,3 +38,30 @@ impl TryFrom<&syn::DeriveInput> for ContainerAttributes {
         })
     }
 }
+
+pub(crate) struct FieldAttributes {
+    pub(crate) length_prefixed: bool,
+}
+
+impl TryFrom<&syn::Field> for FieldAttributes {
+    type Error = syn::Error;
+
+    fn try_from(field: &syn::Field) -> Result<Self, Self::Error> {
+        let mut length_prefixed = false;
+        for attr in &field.attrs {
+            if attr.path().is_ident("ssh") {
+                attr.parse_nested_meta(|meta| {
+                    // #[ssh(length_prefixed)]
+                    if meta.path.is_ident("length_prefixed") {
+                        length_prefixed = true;
+                    } else {
+                        return Err(syn::Error::new_spanned(meta.path, "unknown attribute"));
+                    }
+                    Ok(())
+                })?;
+            }
+        }
+
+        Ok(Self { length_prefixed })
+    }
+}

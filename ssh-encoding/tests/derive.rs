@@ -38,6 +38,7 @@ struct CustomErrorType(u8, u32);
 #[derive(Debug, PartialEq, Decode, Encode)]
 #[ssh(length_prefixed)]
 struct LengthPrefixed {
+    #[ssh(length_prefixed)]
     a: u32,
     b: String,
 }
@@ -94,8 +95,8 @@ fn derive_decode_custom_error() {
 fn derive_encode_decode_roundtrip_length_prefixed() {
     #[rustfmt::skip]
     let data = [
-        0x00, 0x00, 0x00, 0x0D,
-        0x00, 0x00, 0x00, 0x2A,
+        0x00, 0x00, 0x00, 0x11,
+        0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x2A,
         0x00, 0x00, 0x00, 0x05, b'h', b'e', b'l', b'l', b'o',
     ];
     let expected = LengthPrefixed {

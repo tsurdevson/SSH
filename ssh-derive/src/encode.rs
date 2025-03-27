@@ -21,32 +21,7 @@ pub(crate) fn try_derive_encode(input: DeriveInput) -> syn::Result<TokenStream> 
     }
 
     let container_attributes = crate::attributes::ContainerAttributes::try_from(&input)?;
-
-    let mut field_lengths = Vec::with_capacity(data.fields.len());
-    let mut field_encoders = Vec::with_capacity(data.fields.len());
-
-    if container_attributes.length_prefixed {
-        field_lengths.push(quote! { ::ssh_encoding::Encode::encoded_len(&0usize)? });
-        field_encoders.push(
-            quote! { {
-                let len = ::ssh_encoding::Encode::encoded_len(self)? - ::ssh_encoding::Encode::encoded_len(&0usize)?;
-                ::ssh_encoding::Encode::encode(&len, writer)?;
-            }},
-        );
-    }
-
-    for (i, field) in data.fields.iter().enumerate() {
-        let field_ident = field.ident.as_ref().map_or(
-            {
-                let i = syn::Index::from(i);
-                quote! {self.#i}
-            },
-            |ident| quote! {self.#ident},
-        );
-        field_lengths.push(quote! { ::ssh_encoding::Encode::encoded_len(&#field_ident)? });
-        field_encoders.push(quote! { ::ssh_encoding::Encode::encode(&#field_ident, writer)?; });
-    }
-
+    let (field_lengths, field_encoders) = derive_for_fields(&container_attributes, &data.fields)?;
     let ident = input.ident;
     let (impl_generics, type_generics, where_clause) = input.generics.split_for_impl();
 
@@ -68,4 +43,43 @@ pub(crate) fn try_derive_encode(input: DeriveInput) -> syn::Result<TokenStream> 
             }
         }
     })
+}
+
+fn derive_for_fields(
+    container_attributes: &crate::attributes::ContainerAttributes,
+    fields: &syn::Fields,
+) -> syn::Result<(Vec<TokenStream>, Vec<TokenStream>)> {
+    let mut lengths = Vec::new();
+    let mut encoders = Vec::new();
+
+    if container_attributes.length_prefixed {
+        lengths.push(quote! { ::ssh_encoding::Encode::encoded_len(&0usize)? });
+        encoders.push(
+                quote! { {
+                    let len = ::ssh_encoding::Encode::encoded_len(self)? - ::ssh_encoding::Encode::encoded_len(&0usize)?;
+                    ::ssh_encoding::Encode::encode(&len, writer)?;
+                }},
+            );
+    }
+
+    for (i, field) in fields.iter().enumerate() {
+        let field_ident = field.ident.as_ref().map_or(
+            {
+                let i = syn::Index::from(i);
+                quote! {self.#i}
+            },
+            |ident| quote! {self.#ident},
+        );
+        let attrs = crate::attributes::FieldAttributes::try_from(field)?;
+        if attrs.length_prefixed {
+            lengths.push(quote! { ::ssh_encoding::Encode::encoded_len_prefixed(&#field_ident)? });
+            encoders
+                .push(quote! { ::ssh_encoding::Encode::encode_prefixed(&#field_ident, writer)?; });
+        } else {
+            lengths.push(quote! { ::ssh_encoding::Encode::encoded_len(&#field_ident)? });
+            encoders.push(quote! { ::ssh_encoding::Encode::encode(&#field_ident, writer)?; });
+        }
+    }
+
+    Ok((lengths, encoders))
 }
