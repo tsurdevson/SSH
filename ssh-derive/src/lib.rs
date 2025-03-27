@@ -24,6 +24,7 @@ macro_rules! abort {
     };
 }
 
+mod attributes;
 mod decode;
 mod encode;
 

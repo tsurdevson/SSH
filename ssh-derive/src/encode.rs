@@ -6,7 +6,7 @@ use syn::DeriveInput;
 
 pub(crate) fn try_derive_encode(input: DeriveInput) -> syn::Result<TokenStream> {
     let data = match input.data {
-        syn::Data::Struct(data) => data,
+        syn::Data::Struct(ref data) => data,
         _ => abort!(
             input.ident,
             "can't derive `Encode` on this type: only `struct` types are allowed",
@@ -20,11 +20,23 @@ pub(crate) fn try_derive_encode(input: DeriveInput) -> syn::Result<TokenStream> 
         );
     }
 
+    let container_attributes = crate::attributes::ContainerAttributes::try_from(&input)?;
+
     let mut field_lengths = Vec::with_capacity(data.fields.len());
     let mut field_encoders = Vec::with_capacity(data.fields.len());
 
-    for (i, field) in data.fields.into_iter().enumerate() {
-        let field_ident = field.ident.map_or(
+    if container_attributes.length_prefixed {
+        field_lengths.push(quote! { ::ssh_encoding::Encode::encoded_len(&0usize)? });
+        field_encoders.push(
+            quote! { {
+                let len = ::ssh_encoding::Encode::encoded_len(self)? - ::ssh_encoding::Encode::encoded_len(&0usize)?;
+                ::ssh_encoding::Encode::encode(&len, writer)?;
+            }},
+        );
+    }
+
+    for (i, field) in data.fields.iter().enumerate() {
+        let field_ident = field.ident.as_ref().map_or(
             {
                 let i = syn::Index::from(i);
                 quote! {self.#i}
